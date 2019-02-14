@@ -26,7 +26,7 @@ function my_standard_settings( $position, $form_id ) {
                 <?php esc_html_e( 'Sliders', 'gravityforms' ); ?>
                 <?php gform_tooltip( 'some_new_feature' ) ?>
             </label>
-            <input type="checkbox" id="field_encrypt_value" onclick="SetFieldProperty('isSlider', this.checked);" /> Exibir como Slider
+            <input type="checkbox" id="field_encrypt_value" onclick="SetFieldProperty('isSlider', this.checked == true ? 1 : 0);" /> Exibir como Slider
         </li>
         <?php
     }
@@ -44,8 +44,11 @@ function editor_script(){
         fieldSettings.radio += ', .encrypt_setting';
         //binding to the load field settings event to initialize the checkbox
         jQuery(document).on('gform_load_field_settings', function(event, field, form){
-            // alert('sdd');
+             console.log("sxsssssssssssss", field);
             jQuery('#field_encrypt_value').attr('checked', field.encryptField == true);
+            if(field.isSlider == 1){
+                jQuery('#field_encrypt_value').prop('checked', true);
+            }
         });
     </script>
     <?php
@@ -66,8 +69,7 @@ function add_encryption_tooltips( $tooltips ) {
  */
 add_filter( 'gform_field_container', 'gform_format', 10, 6 );
 function gform_format( $field_container, $field, $form, $css_class, $style, $field_content ) {
-    
-    if($field['isSlider'] == 1 && !is_admin()){
+    if(  $field['isSlider'] == 1 && !is_admin()){
         ?>
         <script type='text/javascript'>
             var sizeRange<?php echo $field['id']?> = [
@@ -75,18 +77,35 @@ function gform_format( $field_container, $field, $form, $css_class, $style, $fie
                     $labelSlider = $field['label'];
                     if($field['type'] = 'radio'){
                         foreach($field['choices'] as $f){
-                            echo '"'.$f['text'].'"'.",";                
+                            echo '
+                            "'.$f['text'].',"
+                            '.",";                
                         }
                     }
                 ?>
-            ]   
+            ]
+            var valueRange<?php echo $field['id']?> = [
+                <?php  
+                    $labelSlider = $field['label'];
+                    if($field['type'] = 'radio'){
+                        foreach($field['choices'] as $f){
+                            echo '
+                            "'.$f['value'].'"
+                            '.",";                
+                        }
+                    }
+                ?>
+            ]    
+
+            
             jQuery('#sliderPrice_<?php echo $field['id']?>').html( sizeRange<?php echo $field['id']?> );
             
             jQuery(document).on('input change', '#range-slider_<?php echo $field['id']?>', function() { 
                 var v = jQuery(this).val();
                 console.log(v);
-                jQuery('#choice_<?php echo $form_id.'_'.$field['id'].'_';?>'+v).prop('checked', true);
-                jQuery('#hidden_value_<?php echo $field['id']?>').val(sizeRange<?php echo $field['id']?>[v])
+                console.log('#choice_<?php echo $form['id'].'_'.$field['id'].'_';?>'+v)
+                jQuery('#choice_<?php echo $form['id'].'_'.$field['id'].'_';?>'+v).prop('checked', true);
+                jQuery('#hidden_value_<?php echo $field['id']?>').val(valueRange<?php echo $field['id']?>[v])
                 jQuery('#sliderStatus_<?php echo $field['id']?>').html( jQuery(this).val() );
                 jQuery('#sliderPrice_<?php echo $field['id']?>').html( sizeRange<?php echo $field['id']?>[v] );
             });
@@ -120,27 +139,28 @@ function gform_format( $field_container, $field, $form, $css_class, $style, $fie
                 </div>
                 </div>
                 <div id="slider_count"><span id="sliderPrice_'.$field['id'].'"></span></div>
-                <input type="hidden" name="input_'.$field['id'].'" id="hidden_value_'.$field['id'].'" value="" >
+                <input type="hidden" name="input_'.$field['id'].'" id="hidden_value_'.$field['id'].'" value="'.$_POST['input_'.$field['id']].'" >
                 <div class="gfield_description validation_message custom-error" >Pelo menos um campo deve ser preenchido</div>
                 ';
             }else{
                 $html = '
                 <div class="product-range-wrapper">
-                <b>'. $labelSlider. '</b>
-                <div id="slider_count-m"><span id="sliderPrice_'.$field['id'].'">Nenhuma opção selecionada</span></div>
-                <div class="range-slider-block">
-                    <input type="range" id="range-slider_'.$field['id'].'" value="0.0" min="0" max="'.(count($field['choices'])-1).'" step="1" />
-                </div>
+                    <b>'. $labelSlider. '</b>
+                    <div id="slider_count-m"><span id="sliderPrice_'.$field['id'].'">Nenhuma opção selecionada</span></div>
+                    <div class="range-slider-block">
+                        <input type="range" id="range-slider_'.$field['id'].'" value="0.0" min="0" max="'.(count($field['choices'])-1).'" step="1" />
+                    </div>
                 </div>
                 <div id="slider_count"><span id="sliderPrice_'.$field['id'].'"></span></div>
-                <input type="hidden" name="input_'.$field['id'].'" id="hidden_value_'.$field['id'].'" value="" >
+                <input type="hidden" name="input_'.$field['id'].'" id="hidden_value_'.$field['id'].'" value="'.$_POST['input_'.$field['id']].'" >
                 ';
             }
             
-
+            
             return $html;      
 
     }else{
+        
         return $field_container;
     }
                 
@@ -160,6 +180,7 @@ function radio_to_slider($form) {
                 jQuery("#field_'.$form['id'].'_'.$field['id'].'").css({"visibility":"visible","position":"absolute","z-index":"-1"}); 
             ';
         }
+        $script = '';
     }
     GFFormDisplay::add_init_script( $form['id'], 'format_money', GFFormDisplay::ON_PAGE_RENDER, $script );
 }
@@ -173,37 +194,233 @@ function slider_scripts( ) {
     wp_enqueue_script( "slider-js",plugins_url()."/gravityforms-slider-to-radio/gravity_slider/main.js", array('jquery') );
 }
 
-// add_filter( 'gform_validation', 'custom_validation' );
-// function custom_validation( $validation_result ) {
-    
-//     $form = $validation_result['form'];
-
-//     foreach($form['fields'] as &$field){
-//         $current_page = rgpost( 'gform_source_page_number_' . $form['id'] ) ? rgpost( 'gform_source_page_number_' . $form['id'] ) : 1;
-//         $field_page = $field->pageNumber;
-//         if ( $field_page != $current_page  ) {
-//             continue;
-//         }
-//         $field_value = rgpost( "input_{$field['id']}" );
-//         $is_valid = is_vin( $field_value );
-//         echo $is_valid;
-//         die();
-//         if ( $is_valid ) {
-//             echo 'cu';
-//             die();
-//             continue;
-//         }else{
-//             $validation_result['is_valid'] = false;
-//             $field->failed_validation = true;
-//             $field->validation_message = 'The VIN number you have entered is not valid.';
-//             
-//             $validation_result['form'] = $form;
-//         }
+add_action( 'gform_post_process', 'post_process_actions', 5, 3 );
+function post_process_actions( $form, $v, $source_page_number ){
+    // // if($source_page_number == 1){
+    //     $_POST['input_1'] = $_POST['input_1'];
+    // // }
+}
 
 
-        
-//     }
-//     return $validation_result;  
-	
-// }
+add_filter( 'gform_confirmation', 'alert_user', 10, 4 );
+
+function alert_user( $confirmation, $form, $entry, $ajax ) {
+        $feedback = 0;
+        $html = '';
+        $page = array();
+        foreach($form['fields'] as $field ){
+            if( count((array)$field['choices']) >= 1){
+                foreach((array)$field['choices'] as $choice){
+                    if($_POST['input_'.$field['id']] && is_numeric($_POST['input_'.$field['id']])){
+                        $feedback = $feedback + $_POST['input_'.$field['id']];
+                    }
+                    $page[$field['pageNumber']]['result'] = $feedback;
+                    $page[$field['pageNumber']]['pagenumber'] = $field['pageNumber'];
+                    // $page[$field['pageNumber']]['pagenumber'] = $field['pageNumber'];
+                }
+            }
+        }
+        foreach($page as $p){
+            switch ($p['pagenumber']) {
+                case 2:
+                    if ($p['result'] <= 5) {
+                        $p['situation'] = "Muito Bom";
+                    }
+                    if ($p['result'] <= 6 && $p['result'] <= 7) {
+                        $p['situation'] = "Bom";
+                    }
+                    if ($p['result'] <= 8 && $p['result'] <= 9) {
+                        $p['situation'] = "Regular";
+                    }
+                    if ($p['result'] <= 10 && $p['result'] <= 11) {
+                        $p['situation'] = "Ruim";
+                    }
+                    if ($p['result'] >= 12) {
+                        $p['situation'] = "Muito Ruim";
+                    }
+                    $html .= '
+                    <table class="flat-table">
+                        <tbody>
+                            <tr>
+                                <th> Questionario - ' .$p['pagenumber'].'</th>
+                            </tr>
+                            <tr>
+                                <td>'. $p['result'] .'</td>
+                            </tr>
+                            <tr>
+                                <td>'. $p['situation'] .'</td>
+                            </tr>
+                        </tbody>
+                            </table>
+                    ';
+                    break;
+                case 3:
+                    if ($p['result'] <= 2 ) {
+                        $p['situation'] = "Muito Bom";
+                    }
+                    if ($p['result'] <= 3 && $p['result'] <= 4) {
+                        $p['situation'] = "Bom";
+                    }
+                    if ($p['result'] <= 5 && $p['result'] <= 6) {
+                        $p['situation'] = "Regular";
+                    }
+                    if ($p['result'] <= 7 && $p['result'] <= 8) {
+                        $p['situation'] = "Ruim";
+                    }
+                    if ($p['result'] >= 9) {
+                        $p['situation'] = "Muito Ruim";
+                    }
+                    $html .= '
+                    <table class="flat-table">
+                        <tbody>
+                            <tr>
+                                <th> Questionario - ' .$p['pagenumber'].'</th>
+                            </tr>
+                            <tr>
+                                <td>'. $p['result'] .'</td>
+                            </tr>
+                            <tr>
+                                <td>'. $p['situation'] .'</td>
+                            </tr>
+                        </tbody>
+                            </table>
+                    ';
+                    break;
+                case 4:
+                    if ($p['result'] <= 6) {
+                        $p['situation'] = "Muito Bom";
+                    }
+                    if ($p['result'] <= 7 && $p['result'] <= 9) {
+                        $p['situation'] = "Bom";
+                    }
+                    if ($p['result'] <= 10 && $p['result'] <= 12) {
+                        $p['situation'] = "Regular";
+                    }
+                    if ($p['result'] <= 13 && $p['result'] <= 15) {
+                        $p['situation'] = "Ruim";
+                    }
+                    if ($p['result'] >= 15) {
+                        $p['situation'] = "Muito Ruim";
+                    }
+                    $html .= '
+                    <table class="flat-table">
+                        <tbody>
+                            <tr>
+                                <th> Questionario - ' .$p['pagenumber'].'</th>
+                            </tr>
+                            <tr>
+                                <td>'. $p['result'] .'</td>
+                            </tr>
+                            <tr>
+                                <td>'. $p['situation'] .'</td>
+                            </tr>
+                        </tbody>
+                            </table>
+                    ';
+                    break;
+                case 5:
+                    if ($p['result'] <= 15) {
+                        $p['situation'] = "Muito Bom";
+                    }
+                    if ($p['result'] <= 16 && $p['result'] <= 22) {
+                        $p['situation'] = "Bom";
+                    }
+                    if ($p['result'] <= 23 && $p['result'] <= 29) {
+                        $p['situation'] = "Regular";
+                    }
+                    if ($p['result'] <= 30 && $p['result'] <= 36) {
+                        $p['situation'] = "Ruim";
+                    }
+                    if ($p['result'] >= 37) {
+                        $p['situation'] = "Muito Ruim";
+                    }
+                    $html .= '
+                    <table class="flat-table">
+                        <tbody>
+                            <tr>
+                                <th> Questionario - ' .$p['pagenumber'].'</th>
+                            </tr>
+                            <tr>
+                                <td>'. $p['result'] .'</td>
+                            </tr>
+                            <tr>
+                                <td>'. $p['situation'] .'</td>
+                            </tr>
+                        </tbody>
+                            </table>
+                    ';
+                    break;
+                case 6:
+                    if ($p['result'] <= 14) {
+                        $p['situation'] = "Muito Bom";
+                    }
+                    if ($p['result'] <= 15 && $p['result'] <= 18) {
+                        $p['situation'] = "Bom";
+                    }
+                    if ($p['result'] <= 19 && $p['result'] <= 22) {
+                        $p['situation'] = "Regular";
+                    }
+                    if ($p['result'] <= 23 && $p['result'] <= 26) {
+                        $p['situation'] = "Ruim";
+                    }
+                    if ($p['result'] >= 27) {
+                        $p['situation'] = "Muito Ruim";
+                    }
+                    $html .= '
+                    <table class="flat-table">
+                        <tbody>
+                            <tr>
+                                <th> Questionario - ' .$p['pagenumber'].'</th>
+                            </tr>
+                            <tr>
+                                <td>'. $p['result'] .'</td>
+                            </tr>
+                            <tr>
+                                <td>'. $p['situation'] .'</td>
+                            </tr>
+                        </tbody>
+                            </table>
+                    ';
+                    break;
+                case 7:
+                    if ($p['result'] <= 5) {
+                        $p['situation'] = "Muito Bom";
+                    }
+                    if ($p['result'] <= 6 && $p['result'] <= 7) {
+                        $p['situation'] = "Bom";
+                    }
+                    if ($p['result'] <= 8 && $p['result'] <= 9) {
+                        $p['situation'] = "Regular";
+                    }
+                    if ($p['result'] <= 10 && $p['result'] <= 11) {
+                        $p['situation'] = "Ruim";
+                    }
+                    if ($p['result'] >= 12) {
+                        $p['situation'] = "Muito Ruim";
+                    }
+                    $html .= '
+                    <table class="flat-table">
+                        <tbody>
+                            <tr>
+                                <th> Questionario - ' .$p['pagenumber'].'</th>
+                            </tr>
+                            <tr>
+                                <td>'. $p['result'] .'</td>
+                            </tr>
+                            <tr>
+                                <td>'. $p['situation'] .'</td>
+                            </tr>
+                        </tbody>
+                            </table>
+                    ';
+                    break;
+            }
+            
+
+        }
+
+    $confirmation = $html;
+    return $confirmation; 
+}
+
 
